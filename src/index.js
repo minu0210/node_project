@@ -1,48 +1,42 @@
 const _ = require('lodash')
-const { v4: uuidv4 } = require('uuid')
-const crypto = require('crypto')
 const express = require('express')
 const app = express()
 
-app.use(express.json())
+const signupRoute = require('./server/routes/signup')
+const signinRoute = require('./server/routes/signin')
 
-function encryptPassword(password) {
-    return crypto
-        .createHash('sha256')
-        .update(password + 'QQ4d$4#()$(&^_$^')
-        .digest('base64')
-}
+const dbConnect = require('./db/connect')
+const User = require('./db/users.schema')
+const encryptPassword = require('./lib/encryptPassword')
+const initExpressApp = require('./server/initExpressApp')
 
-let users = [{
-    idx: uuidv4(),
-    id: 'digitech1',
-    password: encryptPassword('thisispassword'),
-    name: '홍길동',
-    gender: 'male',
-    age: 21,
-    phoneNumber: '010-0000-0000'
-}]
+console.log('DB 접속 시도')
+dbConnect()
+console.log('DB 접속 완료')
+
+initExpressApp(app)
+
+const routes = [
+    signupRoute,
+    signinRoute
+]
+
+routes.forEach(route => {
+    app[route.method](route.path, route.handler)
+})
 
 app.get('/users', (req, res) => {
     return res.json(users)
 })
 
-app.post('/signup', (req, res) => {
-    const user = _.pick(
-        req.body,
-        [
-            'id',
-            'password', 
-            'name', 
-            'gender', 
-            'age', 
-            'phoneNumber'
-        ]
-    )
-    
-    users.push(Object.assign(user, { idx: uuidv4() }))
+app.get('/users/me', (req, res) => {
+    const { idx } = req.session
 
-    return res.json({ success: true })
+    const me = users.find(user => {
+        return user.idx === idx
+    })
+
+    return res.json(me)
 })
 
 app.patch('/users/:userId', (req, res) => {
