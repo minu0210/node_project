@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .float::after {
+        display: table;
+        content: '';
+        clear: both;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    body {
+        background-color: whitesmoke;
+    }
+
+    .wrap {
+        width: 100%;
+        max-width: 480px;
+        background-color: #ffffff;
+        box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+        border-radius: 5px;
+
+        margin: 20px auto;
+        padding: 30px;
+        padding-bottom: 0;
+    }
+
+    .title-input {
+        display: block;
+        width: 100%;
+        font-size: 18px;
+        border-radius: 5px;
+        border: 1px solid black;
+
+        margin-top: 20px;
+        padding: 5px;
+    }
+
+    .content-input {
+        margin-top: 20px;
+        width: 100%;
+        min-height: 300px;
+        border-radius: 5px;
+        border: 1px solid black;
+        resize: vertical;
+
+        padding: 5px;
+    }
+
+    .submit {
+        width: 100%;
+        font-size: 16px;
+
+        margin-top: 10px;
+        padding: 5px;
+    }
+
+    footer {
+        text-align: center;
+        padding: 25px;
+    }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script>
+        function getUrlParams() {     
+        const params = {};  
+        
+        window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, 
+            function(str, key, value) { 
+                params[key] = value; 
+            }
+        );     
+        
+        return params; 
+    }
+
+    $(document).ready(() => {
+        async function bootstrap () {
+            const { post_id } = getUrlParams()
+
+            const res = await fetch(`/posts/${post_id}`, {
+                method: 'get'
+            })
+
+            const post = await res.json()
+
+            $('#title').val(post.title)
+            $('#content').html(post.content)
+            $('#form').attr({ action: `/posts/${post._id}?_method=PATCH` })
+        }
+        
+        bootstrap()
+            .catch(err => {
+                console.error(err)
+            })
+    })
+    </script>
+</head>
+<body>
+    <div class="wrap">
+    <h1>블로그 - 수정</h1>
+
+    <form id="form" action="/posts" method="post" enctype="application/x-www-form-urlencoded">
+        <input name="title" id="title" type="text" class="title-input" placeholder="제목을 입력하세요.">
+
+        <textarea name="content" id="content" class="content-input"></textarea>
+
+        <button class="submit">완료</button>
+    </form>
+
+    <footer>
+        ⓒ 2024. 디지텍. All rights reserved.
+    </footer>
+    </div>
+</body>
+</html>
