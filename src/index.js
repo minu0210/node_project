@@ -1,92 +1,53 @@
 const _ = require('lodash')
 const express = require('express')
-const app = express()
+const moduleAlias = require('module-alias')
 
-const signupRoute = require('./server/routes/signup')
-const signinRoute = require('./server/routes/signin')
-
-const dbConnect = require('./db/connect')
-const User = require('./db/users.schema')
-const encryptPassword = require('./lib/encryptPassword')
-const initExpressApp = require('./server/initExpressApp')
-
-console.log('DB 접속 시도')
-dbConnect()
-console.log('DB 접속 완료')
-
-initExpressApp(app)
-
-const routes = [
-    signupRoute,
-    signinRoute
-]
-
-routes.forEach(route => {
-    app[route.method](route.path, route.handler)
+moduleAlias.addAliases({
+    '@root': __dirname,
+    '@db': __dirname + '/db',
+    '@routes': __dirname + '/server/routes',
+    '@lib': __dirname + '/lib',
+    '@server': __dirname + '/server'
 })
 
-app.get('/users', (req, res) => {
-    return res.json(users)
-})
+const routes = require('@routes')
 
-app.get('/users/me', (req, res) => {
-    const { idx } = req.session
+const dbConnect = require('@db/connect')
+const initExpressApp = require('@server/initExpressApp')
 
-    const me = users.find(user => {
-        return user.idx === idx
+async function bootstrap () {
+    const app = express()
+
+    console.log('DB 접속 시도')
+    await dbConnect()
+    console.log('DB 접속 완료')
+
+    initExpressApp(app)
+    
+    routes.forEach(route => {
+        app[route.method](route.path, (req, res) => {
+            route.handler(req, res)
+                .catch((err) => {
+                    console.error('Api Error:', err)
+
+                    const [statusCode, errorMessage] = err.message.split(':')
+                    
+                    return res
+                        .status(statusCode)
+                        .json({
+                            success: false,
+                            message: errorMessage
+                    })
+                })
+        })
     })
 
-    return res.json(me)
-})
-
-app.patch('/users/:userId', (req, res) => {
-    const { userId } = req.params
-    const body = req.body
-    
-    // for (let i = 0; i < users.length; i++) {
-    //     if (users[i].id === userId) {
-    //         if (req.body.name !== undefined) {
-    //             users[i].name = req.body.name
-    //         }
-    //     }
-    // }
-
-    // for (let i = 0; i < users.length; i++) {
-    //     if (users[i].id === userId) {   
-    //         const newUser = _.pick(req.body, ['name', 'age', 'gender', 'phoneNumber'])
-    //         Object.assign(users[i], newUser)
-    //     }
-    // }
-
-    const userIndex = users.findIndex((user) => {
-        return user.idx === userId
+    const port = 3000
+    app.listen(port, () => {
+        console.log(`App is running on port: ${port}`)
     })
-
-    const newUser = _.pick(req.body, ['id', 'password', 'name', 'age', 'gender', 'phoneNumber'])
-
-    if (newUser.password !== undefined) {
-        newUser.password = encryptPassword(newUser.password)
-    }
-
-    Object.assign(users[userIndex], newUser)
-
-    return res.json({ success: true })
-})
-
-app.delete('/users/:userId', (req, res) => {
-    const { userId } = req.params
-    
-    const filterFunc = (user) => {
-        if (user.idx !== userId) return true
-        return false
-    }
-
-    users = users.filter(filterFunc)
-
-    return res.json({ success: true })
-})
-
-const port = 3000
-app.listen(port, () => {
-    console.log(`App is running on port: ${port}`)
-})
+}
+bootstrap() // 최상단에 있어 async를 감싸줄 수 없기 때문에 이러한 방식으로 작성
+    .catch(err => {
+        console.error('Error is occured while running application. Error:', err)
+    })
